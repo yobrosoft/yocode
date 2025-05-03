@@ -1,0 +1,17 @@
+{
+  "name": "yocode-ui",
+  "version": "1.0.0",
+  "description": "UI for Yocode Vim-like editor",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc && cp src/*.html dist/",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.4"
+  }
+}
