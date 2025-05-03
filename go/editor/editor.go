@@ -4,73 +4,11 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"unsafe"
 )
-
-// #cgo darwin CFLAGS: -x objective-c
-// #cgo darwin LDFLAGS: -framework Cocoa -framework WebKit
-// #include <stdlib.h>
-// #import <Cocoa/Cocoa.h>
-// #import <WebKit/WebKit.h>
-//
-// void* createWindow(const char* title, int width, int height) {
-//     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-//     
-//     [NSApplication sharedApplication];
-//     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-//     
-//     // Create the menu bar
-//     NSMenu *menubar = [NSMenu new];
-//     NSMenuItem *appMenuItem = [NSMenuItem new];
-//     [menubar addItem:appMenuItem];
-//     [NSApp setMainMenu:menubar];
-//     
-//     // Create the application menu
-//     NSMenu *appMenu = [NSMenu new];
-//     NSMenuItem *quitMenuItem = [[NSMenuItem alloc] initWithTitle:@"Quit"
-//                                                          action:@selector(terminate:)
-//                                                   keyEquivalent:@"q"];
-//     [quitMenuItem setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
-//     [appMenu addItem:quitMenuItem];
-//     [appMenuItem setSubmenu:appMenu];
-//     
-//     NSWindow* window = [[NSWindow alloc] 
-//         initWithContentRect:NSMakeRect(0, 0, width, height)
-//         styleMask:NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskResizable|NSWindowStyleMaskMiniaturizable
-//         backing:NSBackingStoreBuffered
-//         defer:NO];
-//     
-//     NSString* nsTitle = [NSString stringWithUTF8String:title];
-//     [window setTitle:nsTitle];
-//     [window center];
-//     
-//     WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
-//     WKWebView *webView = [[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, width, height) configuration:config];
-//     
-//     [window setContentView:webView];
-//     [window makeKeyAndOrderFront:nil];
-//     
-//     [NSApp activateIgnoringOtherApps:YES];
-//     
-//     return (void*)webView;
-// }
-//
-// void loadHTML(void* webView, const char* html, const char* baseURL) {
-//     WKWebView* view = (WKWebView*)webView;
-//     NSString* nsHTML = [NSString stringWithUTF8String:html];
-//     NSString* nsBaseURL = [NSString stringWithUTF8String:baseURL];
-//     NSURL* url = [NSURL URLWithString:nsBaseURL];
-//     [view loadHTMLString:nsHTML baseURL:url];
-// }
-//
-// void runApp() {
-//     [NSApp run];
-// }
-import "C"
 
 // Editor represents a Vim-like code editor instance
 type Editor struct {
-	webView unsafe.Pointer
+	window   Window
 	filePath string
 }
 
@@ -92,11 +30,12 @@ func DefaultConfig() Config {
 func New(filePath string, config Config) (*Editor, error) {
 	// Create a window title with the filename
 	title := fmt.Sprintf("Yocode - %s", filepath.Base(filePath))
-	cTitle := C.CString(title)
-	defer C.free(unsafe.Pointer(cTitle))
 
-	// Create a window with a WebView and menu
-	webView := C.createWindow(cTitle, C.int(config.Width), C.int(config.Height))
+	// Create a platform-specific native window
+	window, err := CreateWindow(title, config.Width, config.Height)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create native window: %w", err)
+	}
 
 	// Load the embedded UI assets
 	htmlContent, err := Assets.ReadFile("assets/index.html")
@@ -121,27 +60,24 @@ func New(filePath string, config Config) (*Editor, error) {
 		"vim.js":  string(vimJS),
 	})
 
-	// Convert to C string
-	cHTML := C.CString(htmlWithJS)
-	defer C.free(unsafe.Pointer(cHTML))
-
 	// Set a dummy base URL since all resources are embedded
-	cBaseURL := C.CString("about:blank")
-	defer C.free(unsafe.Pointer(cBaseURL))
+	baseURL := "about:blank"
 
-	// Load the HTML
-	C.loadHTML(webView, cHTML, cBaseURL)
+	// Load the HTML content into the WebView
+	if err := window.LoadHTML(htmlWithJS, baseURL); err != nil {
+		return nil, fmt.Errorf("failed to load HTML content: %w", err)
+	}
 
 	return &Editor{
-		webView: webView,
+		window:   window,
 		filePath: filePath,
 	}, nil
 }
 
 // Run starts the editor's main loop
 func (e *Editor) Run() {
-	// Run the application
-	C.runApp()
+	// Run the platform-specific main loop
+	e.window.Run()
 }
 
 // injectScriptsIntoHTML injects JavaScript directly into the HTML content

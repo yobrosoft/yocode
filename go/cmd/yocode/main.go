@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"yocode/go/editor"
+	"github.com/yobrosoft/yocode/go/editor"
 )
 
 func main() {
