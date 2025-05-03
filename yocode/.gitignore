@@ -1,0 +1,16 @@
+# Go
+bin/
+dist/
+
+# Editor
+editor/dist/
+
+# Node.js
+node_modules/
+
+# Editor files
+*.swp
+*.swo
+
+# macOS
+.DS_Store
