@@ -1,6 +1,7 @@
 # Go
 bin/
 dist/
+yocode
 
 # Editor
 editor/dist/
